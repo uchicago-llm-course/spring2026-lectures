@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 3: MLPs and Factual Recall | CMSC 25750/35750 LLMs</title>
+    <meta name="author" content="Chenhao Tan">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="../assets/css/uchicago-theme.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]']],
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title -->
+            <section data-markdown>
+                <textarea data-template>
+                    # CMSC 25750/35750:
+                    ## Large Language Models
+
+                    ## Lecture 3: MLPs and Factual Recall
+
+                    <p style="text-align: center;">
+                    Chenhao Tan<br/>
+                    University of Chicago<br/>
+                    @ChenhaoTan, @chenhaotan.bsky.social<br/>
+                    chenhao@uchicago.edu
+                    </p>
+                </textarea>
+            </section>
+
+            <section data-markdown>
+                <textarea data-template>
+                    ## Logistics
+
+                    - Roast or toast signup
+                    - Project submissions
+                    - Office hour information online
+                    - Any feedback
+
+                </textarea>
+            </section>
+
+            <!-- MLPs intro -->
+            <section data-markdown>
+                <textarea data-template>
+                    ## From attention to MLPs
+
+                    Last lecture: attention heads move information between token positions.
+
+                    But feed-forward layers (MLPs) account for two-thirds of a transformer's parameters. What do they do?
+
+                    This lecture follows a two-paper arc:
+
+                    - Meng et al. (2022): mid-layer MLPs store factual associations, which can be directly edited (ROME)
+                    - Niu et al. (2024): the same localization methods work on syntax — so what are MLPs actually storing?
+                </textarea>
+            </section>
+
+            <!-- Agenda -->
+            <section data-markdown>
+                <textarea data-template>
+                    ## Today's agenda
+
+                    * Paper overviews
+                    * Deep dives
+                    * Discussion
+                </textarea>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Paper Overviews                                     -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * Paper overviews
+                        * <span style="color: #767676;">Deep dives</span>
+                        * <span style="color: #767676;">Discussion</span>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Locating and Editing Factual Associations in GPT
+
+                        Meng et al. (2022) use causal tracing to find where factual associations are stored.
+
+                        Finding: mid-layer MLP modules at the last subject token are decisive. A separate late site — attention at the last token — copies the recalled fact to the output.
+
+                        They then introduce ROME (Rank-One Model Editing): directly update the MLP weights at the decisive layer to insert a new factual association.
+
+                        <p class="citation"><a href="https://arxiv.org/abs/2202.05262">Meng et al., 2022</a></p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## What does the Knowledge Neuron Thesis Have to do with Knowledge?
+
+                        Niu et al. (2024) ask: if the same methods that localize facts also localize syntactic phenomena (number agreement, subject-verb agreement), do MLPs actually store "knowledge"?
+
+                        They find that KN-edit has low reliability (max ~5% overturn rate for syntax, up to 48% for facts). ROME fails under symmetry and synonymy tests.
+
+                        Their conclusion: MLPs store token expression patterns, not knowledge in any meaningful sense.
+
+                        <p class="citation"><a href="https://arxiv.org/abs/2405.02421">Niu et al., 2024</a></p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## The arc
+
+                        | | Meng et al. | Niu et al. |
+                        |---|---|---|
+                        | Question | Where are facts stored? | Is that really knowledge? |
+                        | Method | Causal tracing + model editing | Syntactic probing + editing eval |
+                        | Claim | Mid-layer MLPs store facts | MLPs store patterns, not knowledge |
+
+                    </textarea>
+                </section>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Deep Dives                                          -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * <span style="color: #767676;">Paper overviews</span>
+                        * Deep dives
+                        * <span style="color: #767676;">Discussion</span>
+                    </textarea>
+                </section>
+
+                <!-- Causal tracing -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Causal tracing
+
+                        Meng et al. run three forward passes to locate factual recall:
+
+                        1. Clean run: normal forward pass on "The Space Needle is in downtown ___" — model predicts "Seattle"
+                        2. Corrupted run: add Gaussian noise to subject token embeddings — model loses the subject, likely predicts incorrectly
+                        3. Restore run: run on corrupted input, but at one specific (layer, token) position restore the clean hidden state — measure if the correct prediction recovers
+
+                        The indirect effect (IE) of a state is the probability recovery it causes while the subject remains corrupted.
+
+                        <p class="citation">Meng et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Why "indirect" effect?
+
+                        From causal mediation analysis: the total effect of a cause on an output splits into a direct path and paths through mediators.
+
+                        In causal tracing, the subject remains corrupted throughout, so all states computed from it are also corrupted. Restoring one hidden state \\(h^{(l)}_t\\) to its clean value asks: how much of the correct prediction flows forward from this node alone? This is the indirect effect mediated by \\(h^{(l)}_t\\) — the portion of the total treatment effect (clean vs. corrupted subject) that is channeled through this specific state.
+
+                        <p class="citation">Meng et al., 2022; Wang et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Two sites of factual recall
+
+                        Averaging over 1000 factual statements in GPT-2 XL:
+
+                        Early site: mid-layer MLP modules at the last subject token have high average indirect effect (AIE up to 6.6% for MLPs vs 1.6% for attention).
+
+                        Late site: attention at the last token of the prompt (just before the prediction) has strong causal effect — this is where the recalled fact is copied to the output position.
+
+                        The hypothesis: mid-layer MLPs recall the fact about the subject; late-layer attention copies it to the last token for prediction.
+
+                        <p class="citation">Meng et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Causal tracing vs. the IOI approach
+
+                        Both use causal interventions, but differ in direction and granularity.
+
+                        IOI (Wang et al.): start from a clean run, patch in corrupted activations for one component at a time, measure the **drop** in logit difference. Identifies components that are necessary — if removing it hurts, it matters.
+
+                        Causal tracing (Meng et al.): start from a fully corrupted run, restore one hidden state at a time, measure **recovery** of correct probability. Identifies states that are sufficient to carry the signal forward.
+
+                        <p class="citation">Meng et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Causal tracing vs. path patching
+
+                        | | Causal tracing (Meng et al.) | Path patching (Wang et al.) |
+                        |---|---|---|
+                        | Direction | Recovery: corrupt all, restore one | Drop: clean baseline, corrupt one |
+                        | What it finds | States sufficient to relay the signal | Components necessary for the output |
+                        | Pro | Pinpoints where signal can be recovered | Identifies load-bearing components |
+                        | Con | May highlight relay nodes, not storage sites | Misses redundant components (backup paths compensate) |
+
+                        <p class="citation">Meng et al., 2022; Wang et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <!-- ROME -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## ROME: overview
+
+                        Goal: change what the model says about a subject — e.g., replace "Space Needle is in Seattle" with "Space Needle is in Paris" — by directly modifying weights, not by fine-tuning.
+
+                        Three steps:
+                        1. Use causal tracing to identify the decisive MLP layer \\(l^\ast\\) at the last subject token
+                        2. Compute a key \\(k_\ast\\) (what the subject looks like at \\(l^\ast\\)) and a value \\(v_\ast\\) (what the output should be)
+                        3. Update \\(W_{\text{proj}}^{(l^\ast)}\\) with a rank-one edit that inserts \\((k_\ast, v_\ast)\\) while preserving existing associations
+
+                        The key insight: \\(W_{\text{proj}}\\) can be treated as a key-value memory, so inserting one new association is a well-defined algebraic problem.
+
+                        <p class="citation">Meng et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## ROME: \\(W_{\text{proj}}\\) as associative memory
+
+                        A transformer MLP has two weight matrices. The first (\\(W_{fc}\\)) projects up and detects patterns; the second (\\(W_{proj}\\)) projects back down and produces the output contribution.
+
+                        \\(W_\text{proj}^{(l)}\\) has shape \\(d_\text{model} \times d_\text{ff}\\). Each column is a "value vector" that gets activated when the corresponding "key" (row of \\(W_{fc}\\)) fires.
+
+                        Meng et al. model this as a linear associative memory: given a set of key vectors \\(K\\) and desired value vectors \\(V\\), the matrix \\(W\\) encodes the associations by satisfying \\(WK \approx V\\).
+
+                        <p class="citation">Meng et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section>
+                    <svg id="mlp-diagram" viewBox="0 0 1100 480" width="1050" height="456" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;margin-top:20px;" font-family="Georgia, serif">
+                        <defs>
+                            <marker id="arr-m" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                                <polygon points="0 0, 9 3.5, 0 7" fill="#800000"/>
+                            </marker>
+                        </defs>
+
+                        <!-- fan lines: input -> intermediate -->
+                        <g stroke="#ccc" stroke-width="1" opacity="0.8">
+                            <line x1="185" y1="130" x2="490" y2="70"/>
+                            <line x1="185" y1="130" x2="490" y2="150"/>
+                            <line x1="185" y1="130" x2="490" y2="240"/>
+                            <line x1="185" y1="210" x2="490" y2="70"/>
+                            <line x1="185" y1="210" x2="490" y2="150"/>
+                            <line x1="185" y1="210" x2="490" y2="240"/>
+                            <line x1="185" y1="210" x2="490" y2="330"/>
+                            <line x1="185" y1="290" x2="490" y2="150"/>
+                            <line x1="185" y1="290" x2="490" y2="240"/>
+                            <line x1="185" y1="290" x2="490" y2="330"/>
+                            <line x1="185" y1="290" x2="490" y2="400"/>
+                            <line x1="185" y1="350" x2="490" y2="240"/>
+                            <line x1="185" y1="350" x2="490" y2="330"/>
+                            <line x1="185" y1="350" x2="490" y2="400"/>
+                        </g>
+
+                        <!-- fan lines: intermediate -> output -->
+                        <g stroke="#ccc" stroke-width="1" opacity="0.8">
+                            <line x1="615" y1="70"  x2="920" y2="130"/>
+                            <line x1="615" y1="70"  x2="920" y2="210"/>
+                            <line x1="615" y1="150" x2="920" y2="130"/>
+                            <line x1="615" y1="150" x2="920" y2="210"/>
+                            <line x1="615" y1="240" x2="920" y2="130"/>
+                            <line x1="615" y1="240" x2="920" y2="210"/>
+                            <line x1="615" y1="240" x2="920" y2="290"/>
+                            <line x1="615" y1="330" x2="920" y2="210"/>
+                            <line x1="615" y1="330" x2="920" y2="290"/>
+                            <line x1="615" y1="330" x2="920" y2="350"/>
+                            <line x1="615" y1="400" x2="920" y2="290"/>
+                            <line x1="615" y1="400" x2="920" y2="350"/>
+                        </g>
+
+                        <!-- Input box -->
+                        <rect x="60" y="95" width="125" height="270" rx="7" fill="#f5f5f5" stroke="#555" stroke-width="2"/>
+                        <line x1="60" y1="130" x2="78" y2="130" stroke="#999" stroke-width="1.5"/>
+                        <line x1="60" y1="165" x2="78" y2="165" stroke="#999" stroke-width="1.5"/>
+                        <line x1="60" y1="200" x2="78" y2="200" stroke="#999" stroke-width="1.5"/>
+                        <line x1="60" y1="235" x2="78" y2="235" stroke="#999" stroke-width="1.5"/>
+                        <line x1="60" y1="270" x2="78" y2="270" stroke="#999" stroke-width="1.5"/>
+                        <line x1="60" y1="305" x2="78" y2="305" stroke="#999" stroke-width="1.5"/>
+                        <line x1="60" y1="340" x2="78" y2="340" stroke="#999" stroke-width="1.5"/>
+                        <text x="122" y="238" text-anchor="middle" font-size="26" font-style="italic" fill="#222">h</text>
+                        <text x="122" y="398" text-anchor="middle" font-size="16" fill="#555">d_model</text>
+
+                        <!-- W_fc arrow -->
+                        <line x1="187" y1="230" x2="482" y2="230" stroke="#800000" stroke-width="2.5" marker-end="url(#arr-m)"/>
+                        <text x="335" y="210" text-anchor="middle" font-size="21" fill="#800000" font-weight="bold">W_fc</text>
+                        <text x="335" y="256" text-anchor="middle" font-size="16" fill="#800000">keys: detect patterns</text>
+
+                        <!-- Intermediate box (taller) -->
+                        <rect x="490" y="35" width="125" height="400" rx="7" fill="#f5f5f5" stroke="#555" stroke-width="2"/>
+                        <line x1="490" y1="70"  x2="508" y2="70"  stroke="#999" stroke-width="1.5"/>
+                        <line x1="490" y1="110" x2="508" y2="110" stroke="#999" stroke-width="1.5"/>
+                        <line x1="490" y1="150" x2="508" y2="150" stroke="#999" stroke-width="1.5"/>
+                        <line x1="490" y1="190" x2="508" y2="190" stroke="#999" stroke-width="1.5"/>
+                        <line x1="490" y1="230" x2="508" y2="230" stroke="#999" stroke-width="1.5"/>
+                        <line x1="490" y1="270" x2="508" y2="270" stroke="#999" stroke-width="1.5"/>
+                        <line x1="490" y1="310" x2="508" y2="310" stroke="#999" stroke-width="1.5"/>
+                        <line x1="490" y1="350" x2="508" y2="350" stroke="#999" stroke-width="1.5"/>
+                        <line x1="490" y1="390" x2="508" y2="390" stroke="#999" stroke-width="1.5"/>
+                        <text x="552" y="230" text-anchor="middle" font-size="19" font-style="italic" fill="#222">σ(W_fc h)</text>
+                        <text x="552" y="460" text-anchor="middle" font-size="16" fill="#555">d_ff = 4 × d_model</text>
+
+                        <!-- W_proj arrow -->
+                        <line x1="617" y1="230" x2="912" y2="230" stroke="#800000" stroke-width="2.5" marker-end="url(#arr-m)"/>
+                        <text x="765" y="210" text-anchor="middle" font-size="21" fill="#800000" font-weight="bold">W_proj</text>
+                        <text x="765" y="256" text-anchor="middle" font-size="16" fill="#800000">values: produce output</text>
+
+                        <!-- Output box -->
+                        <rect x="920" y="95" width="125" height="270" rx="7" fill="#f5f5f5" stroke="#555" stroke-width="2"/>
+                        <line x1="920" y1="130" x2="938" y2="130" stroke="#999" stroke-width="1.5"/>
+                        <line x1="920" y1="165" x2="938" y2="165" stroke="#999" stroke-width="1.5"/>
+                        <line x1="920" y1="200" x2="938" y2="200" stroke="#999" stroke-width="1.5"/>
+                        <line x1="920" y1="235" x2="938" y2="235" stroke="#999" stroke-width="1.5"/>
+                        <line x1="920" y1="270" x2="938" y2="270" stroke="#999" stroke-width="1.5"/>
+                        <line x1="920" y1="305" x2="938" y2="305" stroke="#999" stroke-width="1.5"/>
+                        <line x1="920" y1="340" x2="938" y2="340" stroke="#999" stroke-width="1.5"/>
+                        <text x="982" y="238" text-anchor="middle" font-size="26" font-style="italic" fill="#222">m</text>
+                        <text x="982" y="398" text-anchor="middle" font-size="16" fill="#555">d_model</text>
+                    </svg>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## ROME: \\(k_\ast\\) and \\(v_\ast\\)
+
+                        Key \\(k_\ast\\): the hidden state at layer \\(l^\ast\\) when the model processes the subject. Averaged over a small set of prompts ending with the subject, so it represents the subject stably rather than one surface form.
+
+                        Value \\(v_\ast\\): optimized by gradient descent so that, when the model reads \\(k_\ast\\) at layer \\(l^\ast\\), it produces the desired output. This encodes the new relation \\((r, o^\ast)\\) as a property of the subject.
+
+                        <p class="citation">Meng et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## ROME: the rank-one update
+
+                        To insert \\((k_\ast, v_\ast)\\) while preserving existing associations \\(WK \approx V\\), they solve:
+
+                        \\[\hat{W} = W + \Lambda (C^{-1} k_\ast)^\top\\]
+
+                        \\(C\\) is the key covariance, pre-computed once. \\(C^{-1} k_\ast\\) downweights directions that are frequently activated, concentrating the edit where it causes the least interference.
+
+                        <p class="citation">Meng et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## ROME: solving for \\(\Lambda\\)
+
+                        Set \\(\Lambda = \frac{v_\ast - W k_\ast}{k_\ast^\top C^{-1} k_\ast}\\) and verify \\(\hat{W} k_\ast = v_\ast\\):
+
+                        \\[\hat{W} k_\ast = W k_\ast + \Lambda\,(C^{-1} k_\ast)^\top k_\ast = W k_\ast + \frac{v_\ast - W k_\ast}{k_\ast^\top C^{-1} k_\ast} \cdot k_\ast^\top C^{-1} k_\ast = v_\ast\\]
+
+                        The \\(C^{-1}\\) cancels exactly: \\((C^{-1} k_\ast)^\top k_\ast = k_\ast^\top C^{-1} k_\ast\\) appears in both numerator and denominator.
+
+                        The residual \\(v_\ast - W k_\ast\\) is what the current weights are missing. \\(\Lambda\\) is solved analytically — no optimization needed at this step.
+
+                        <p class="citation">Meng et al., 2022</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Tightening the evaluation criteria
+
+                        Meng et al. evaluate on reliability (does the edit work?), generality (does it transfer to paraphrases?), and locality (does it leave unrelated facts unchanged?).
+
+                        Yao et al. (2023) add portability: if you change Watts Humphrey's alma mater to Harvard, the model should also know that Harvard is in Boston. Portability drops to ~50% where generality is ~90%.
+
+                        Niu et al. further add symmetry and synonymy: a truly successful edit should propagate to logically equivalent reformulations.
+
+                        Each new criterion reveals a gap that the previous ones missed.
+
+                        <p class="citation">Niu et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Critique -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Localizing syntax the same way
+
+                        Niu et al. apply the same KN-edit localization method (integral of gradients) to syntactic phenomena from BLiMP: determiner-noun agreement, subject-verb agreement, anaphoric gender agreement.
+
+                        Finding: syntactic phenomena localize to just 2-5 neurons, just like factual associations. The localization is highly consistent across prompts.
+
+                        Furthermore, syntactic and factual neurons occupy the same layers (the topmost layers), with no clear bifurcation — contradicting the view that syntax is shallow and semantics is deep.
+
+                        <p class="citation">Niu et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Formal vs. functional competence
+
+                        Mahowald et al. (2024) distinguish two types of competence:
+                        - Formal: knowledge of linguistic rules and patterns (syntax)
+                        - Functional: understanding and using language in the world (semantics, facts)
+
+                        The KN thesis implicitly assumes functional competence is special — that "knowledge" is stored differently from rule-following.
+
+                        Niu et al.'s finding that both localize the same way, in the same layers, using the same method, challenges this assumption. If the mechanism is the same, the distinction may not be meaningful at the level of internal representations.
+
+                        <p class="citation">Niu et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## KN edit has low reliability
+
+                        The core test of the KN thesis: can suppressing the identified neurons overturn the model's categorical prediction?
+
+                        For determiner-noun agreement: only 5.2% of predictions are overturned. For factual editing: reliability ranges from 1.66% to 47.86% across benchmarks.
+
+                        The intervention changes output probabilities noticeably, but rarely changes what the model actually predicts.
+
+                        Conclusion: the localization reflects where the model is sensitive to a perturbation, not where the information is fully stored.
+
+                        <p class="citation">Niu et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## ROME fails symmetry and synonymy
+
+                        Niu et al. introduce two new evaluation criteria:
+
+                        Symmetry: if you edit "the capital of Canada is Rome," the model should also accept "Rome is the capital of Canada."
+
+                        Synonymy: if you edit a fact about "toothache," the model should generalize to "tooth pain."
+
+                        ROME fails both. The edit is local to the specific surface form used during editing and does not propagate to logically equivalent expressions.
+
+                        This suggests ROME alters token association patterns rather than a stored fact.
+
+                        <p class="citation">Niu et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Methods summary -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Methods
+
+                        - Causal tracing (Meng et al.): three-run intervention (clean / corrupted / restore); measure indirect effect per (layer, token) position
+                        - Model editing (Meng et al.): rank-one weight update at target layer
+                        - Evaluation criteria (Niu et al.): reliability, generality, locality, portability, symmetry, synonymy
+                    </textarea>
+                </section>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Discussion                                          -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * <span style="color: #767676;">Paper overviews</span>
+                        * <span style="color: #767676;">Deep dives</span>
+                        * Discussion
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Discussion 1: What is knowledge in a language model?
+
+                        Niu et al. argue that MLPs store "token expression patterns," not knowledge. But what would it mean to store knowledge?
+
+                        Facts, syntax, and co-occurrence statistics all localize similarly. Does the distinction between knowledge and pattern even make sense for a statistical model?
+
+                        What criteria would a representation need to satisfy to count as storing knowledge rather than pattern-matching?
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Discussion 2: What does a successful edit require?
+
+                        ROME achieves good generalization on paraphrases but fails on symmetry and synonymy.
+
+                        What would a truly successful edit look like? Should changing "the capital of Canada" also update all downstream beliefs that depend on that fact?
+
+                        Is model editing fundamentally limited because facts are not stored in one place, or is it a matter of finding a better intervention?
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Discussion 3: Causal tracing and its limits
+
+                        Causal tracing identifies states whose restoration recovers the correct prediction. But Niu et al.'s parallel finding complicates the picture: KN localization (via integrated gradients) identifies neurons with high gradient sensitivity — yet suppressing those neurons rarely overturns the prediction.
+
+                        Both methods identify where a model is sensitive to an intervention, but neither guarantees that the intervention is sufficient to change behavior.
+
+                        What is the relationship between sensitivity and storage? Can a state be causally important without being the site where information is stored?
+                    </textarea>
+                </section>
+            </section>
+
+            <!-- Questions -->
+            <section data-markdown>
+                <textarea data-template>
+                    # Questions?
+                </textarea>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/monokai.min.css">
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            transition: 'slide',
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            plugins: [ RevealMarkdown, RevealHighlight ]
+        });
+
+        Reveal.on('slidechanged', function() {
+            if (window.MathJax) MathJax.typesetPromise();
+        });
+    </script>
+</body>
+</html>
