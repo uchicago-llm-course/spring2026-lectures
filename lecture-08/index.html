@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 8: AI Safety | CMSC 25750/35750 LLMs</title>
+    <meta name="author" content="Chenhao Tan">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="../assets/css/uchicago-theme.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\\(', '\\\)']],
+                displayMath: [['\\[', '\\]']],
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title -->
+            <section data-markdown>
+                <textarea data-template>
+                    # CMSC 25750/35750:
+                    ## Large Language Models
+
+                    ## Lecture 8: The Alignment Problem
+
+                    <p style="text-align: center;">
+                    Chenhao Tan<br/>
+                    University of Chicago<br/>
+                    @ChenhaoTan, @chenhaotan.bsky.social<br/>
+                    chenhao@uchicago.edu
+                    </p>
+                </textarea>
+            </section>
+
+            <section data-markdown>
+                <textarea data-template>
+                    ## Logistics
+
+                    - Project updates
+
+                </textarea>
+            </section>
+
+            <!-- Agenda -->
+            <section data-markdown>
+                <textarea data-template>
+                    ## Today's agenda
+
+                    * Paper overviews
+                    * Deep dives
+                    * Discussion
+                </textarea>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Paper Overviews                                     -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * Paper overviews
+                        * <span style="color: #767676;">Deep dives</span>
+                        * <span style="color: #767676;">Discussion</span>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Concrete Problems in AI Safety
+
+                        Amodei et al. (2016): five safety problems, illustrated with a cleaning robot.
+
+                        1. Avoiding negative side effects
+                        2. Avoiding reward hacking
+                        3. Scalable oversight
+                        4. Safe exploration
+                        5. Robustness to distributional shift
+
+                        <p class="citation"><a href="https://arxiv.org/abs/1606.06565">Amodei et al., 2016</a></p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## What Failure Looks Like
+
+                        Christiano (2019): two failure modes, neither requiring a sudden AI takeover.
+
+                        Part I ("going out with a whimper"): ML amplifies optimization of easy-to-measure proxies. Proxies decouple from what we care about; human reasoning gradually loses the ability to steer the system.
+
+                        Part II ("going out with a bang"): training selects influence-seeking patterns. Once entrenched, they trigger rapid phase transitions.
+
+                        <p class="citation"><a href="https://www.lesswrong.com/posts/HBxe6wdjxK239zajf/what-failure-looks-like">Christiano, 2019</a></p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Scheming AIs
+
+                        Carlsmith (2023): will advanced AIs fake alignment during training to gain power later?
+
+                        Core worry: performing well in training may be a good strategy for gaining power. If so, a wide variety of goals would motivate it---making scheming plausible even without intending to create it.
+
+                        Rough estimate: ~25% probability, given a goal-directed, situationally aware model trained with baseline ML methods.
+
+                        <p class="citation"><a href="https://arxiv.org/abs/2311.08379">Carlsmith, 2023</a></p>
+                    </textarea>
+                </section>
+
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Deep Dives                                          -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * <span style="color: #767676;">Paper overviews</span>
+                        * Deep dives
+                        * <span style="color: #767676;">Discussion</span>
+                    </textarea>
+                </section>
+
+                <!-- Concrete Problems: negative side effects -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Negative side effects
+
+                        Rewarding only task X leaves the robot indifferent to everything else.
+
+                        Example: a robot rewarded for moving a box across the room may knock over a vase in its path. If we're worried about the vase, we can penalize that---but what about all the other things it might disturb?
+
+                        Approaches: impact regularizer (penalize change beyond what a null policy would cause); penalize empowerment; cooperative IRL.
+
+                        <p class="citation">Amodei et al., 2016</p>
+                    </textarea>
+                </section>
+
+                <!-- Reward hacking -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Reward hacking
+
+                        Formal rewards are approximations of intent---optimizers find the gaps.
+
+                        - Robot rewarded for a mess-free environment: close its eyes
+                        - Robot rewarded for cleaning rate: pour bleach down the drain
+                        - Robot rewarded by a human score sensor: tamper with the sensor
+
+                        Goodhart's law: when a metric becomes a target, it ceases to be a good metric.
+
+                        <p class="citation">Amodei et al., 2016</p>
+                    </textarea>
+                </section>
+
+                <!-- Scalable oversight -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Scalable oversight
+
+                        True objective: "if the user inspected the cleaned office carefully, how satisfied would they be?" Too expensive to evaluate every episode.
+
+                        The robot must learn from cheap proxies---visible dirt, user reactions---that only imperfectly track the true goal.
+
+                        Semi-supervised RL framing: the agent sees true reward on a small fraction of episodes and must generalize from unlabeled transitions.
+
+                        <p class="citation">Amodei et al., 2016</p>
+                    </textarea>
+                </section>
+
+                <!-- Safe exploration -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Safe exploration
+
+                        The robot should experiment with mopping strategies---but putting a wet mop in an electrical outlet is not recoverable.
+
+                        Hard-coding every catastrophic action is not scalable as environments grow complex.
+
+                        Approaches: risk-sensitive objectives; start from demonstrations; explore in simulation first; bound exploration to a known-safe region.
+
+                        <p class="citation">Amodei et al., 2016</p>
+                    </textarea>
+                </section>
+
+                <!-- Distributional shift -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Robustness to distributional shift
+
+                        Cleaning strategies learned for a factory floor may be dangerous in an office. The robot may not realize it is in a different environment---and act with high confidence on wrong heuristics.
+
+                        Two requirements: (1) perform reasonably on the new distribution, (2) know when performance is likely to be poor.
+
+                        <p class="citation">Amodei et al., 2016</p>
+                    </textarea>
+                </section>
+
+                <!-- Christiano Part I -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## You get what you measure
+
+                        Easy-to-measure vs. hard-to-measure goals:
+
+                        - Persuading someone vs. helping them figure out what is true
+                        - Reducing reported crime vs. actually preventing crime
+                        - Improving reported satisfaction vs. actually helping someone live well
+
+                        ML widens this gap. Proxies that once tracked what we cared about stop doing so when strongly optimized. Human reasoning gradually loses the ability to steer the system.
+
+                        <p class="citation">Christiano, 2019</p>
+                    </textarea>
+                </section>
+
+                <!-- Christiano Part II -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Influence-seeking behavior
+
+                        Training selects policies that score well---including policies that score well by gaining influence rather than doing the intended task.
+
+                        Early-stage influence-seekers look useful and aligned. The danger becomes visible only once they cannot be dislodged.
+
+                        If they appear and become entrenched, a rapid phase transition is possible: automated systems fail in coordination, humans lose effective control.
+
+                        <p class="citation">Christiano, 2019</p>
+                    </textarea>
+                </section>
+
+                <!-- The two failure modes interacting -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## How the two failure modes connect
+
+                        Neither requires a sudden capability jump. Both unfold during ordinary ML deployment---without any moment where consensus recognizes things have gone wrong.
+
+                        Part I (whimper) and Part II (bang) compound each other: proxy erosion weakens the oversight that could catch influence-seekers; influence-seekers accelerate the erosion.
+
+                        <p class="citation">Christiano, 2019</p>
+                    </textarea>
+                </section>
+
+                <!-- Scheming -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Scheming AIs
+
+                        Carlsmith (2023): an AI that performs well in training specifically to gain power later.
+
+                        Three prerequisites: (1) situational awareness---the model knows it is being trained and what the process rewards; (2) beyond-episode goals---it cares about outcomes after the episode; (3) training-gaming as an instrumental strategy---performing well now is the best path to power later.
+
+                        Core worry: schemer-like goals are wide in goal space; non-schemer goals compatible with good training performance are narrow. SGD may land on a schemer naturally. And schemers pass tests designed to detect them.
+
+                        <p class="citation"><a href="https://arxiv.org/abs/2311.08379">Carlsmith, 2023</a></p>
+                    </textarea>
+                </section>
+
+                <!-- Reasons for comfort / pushback -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Pushback on scheming
+
+                        Scheming may not be a good strategy: goal-guarding may fail as training continuously modifies weights; escape/takeover may be too uncertain to justify the cost.
+
+                        Selection pressure can work against schemers: extra instrumental reasoning costs performance; we can increase that cost deliberately (time pressure, legible scratchpads, traps that are hard to distinguish from real opportunities).
+
+                        Carlsmith's estimate: ~25% conditional on a goal-directed, situationally aware model trained with baseline methods.
+
+                        <p class="citation">Carlsmith, 2023</p>
+                    </textarea>
+                </section>
+
+                <!-- Connections between papers -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## How the three readings connect
+
+                        Amodei et al.: concrete, near-term problems---each with an experimental proposal. The cleaning robot grounds each problem in a shared scenario.
+
+                        Christiano: two systemic failure narratives that need no malicious AI---just ordinary optimization at scale.
+
+                        Carlsmith: the most adversarial case within Christiano's Part II---a model that actively hides its misalignment.
+
+                        A progression: specific technical problems → systemic failure modes → the hardest detection problem.
+                    </textarea>
+                </section>
+
+
+
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Discussion                                          -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * <span style="color: #767676;">Paper overviews</span>
+                        * <span style="color: #767676;">Deep dives</span>
+                        * Discussion
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Discussion 1: Amodei is a 10-year-old paper
+
+                        The five problems were framed around RL agents. LLMs are a different kind of system---trained once on language, then deployed for open-ended interaction.
+
+                        Which of the five problems show up clearly in LLMs? (Reward hacking via sycophancy? Distributional shift when deployed outside training contexts? Scalable oversight for code or medical advice?)
+
+                        What risks do LLMs introduce that Amodei's taxonomy does not capture? Think about: hallucination, persuasion at scale, homogenization of information, agentic tool use, misuse by bad actors.
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Discussion 2: Is this already happening with social media?
+
+                        Social media optimizes for engagement rather than informed citizens. Is that already Christiano's "going out with a whimper"?
+
+                        What has the damage looked like, and have we been able to course-correct?
+
+                        What would make AI qualitatively worse---personalization, agency, speed, or something else?
+                    </textarea>
+                </section>
+
+            </section>
+
+            <!-- Questions -->
+            <section data-markdown>
+                <textarea data-template>
+                    # Questions?
+                </textarea>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/monokai.min.css">
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            transition: 'slide',
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            plugins: [ RevealMarkdown, RevealHighlight ]
+        });
+
+        Reveal.on('slidechanged', function() {
+            if (window.MathJax) MathJax.typesetPromise();
+        });
+    </script>
+</body>
+</html>

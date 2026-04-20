@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 7: Protein Language Models | CMSC 25750/35750 LLMs</title>
+    <meta name="author" content="Chenhao Tan">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="../assets/css/uchicago-theme.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\\(', '\\\)']],
+                displayMath: [['\\[', '\\]']],
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Title -->
+            <section data-markdown>
+                <textarea data-template>
+                    # CMSC 25750/35750:
+                    ## Large Language Models
+
+                    ## Lecture 7: Protein Language Models
+
+                    <p style="text-align: center;">
+                    Chenhao Tan<br/>
+                    University of Chicago<br/>
+                    @ChenhaoTan, @chenhaotan.bsky.social<br/>
+                    chenhao@uchicago.edu
+                    </p>
+                </textarea>
+            </section>
+
+            <section data-markdown>
+                <textarea data-template>
+                    ## Logistics
+
+                    - Project updates
+                    - Any other logistics
+
+                </textarea>
+            </section>
+
+            <!-- Agenda -->
+            <section data-markdown>
+                <textarea data-template>
+                    ## Today's agenda
+
+                    * Paper overviews
+                    * Deep dives
+                    * Discussion
+                </textarea>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Paper Overviews                                     -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * Paper overviews
+                        * <span style="color: #767676;">Deep dives</span>
+                        * <span style="color: #767676;">Discussion</span>
+                    </textarea>
+                </section>
+
+                <!-- Crash course: sequence, structure, function -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Proteins: sequence, structure, function
+
+                        Input: a sequence of amino acids drawn from a 20-letter alphabet (e.g., MKTAYIAKQR...), typically hundreds to thousands of residues long.
+
+                        Proteins fold into a three-dimensional structure. The structure determines the protein's function---an enzyme's active site, an antibody's binding surface, a channel's pore geometry.
+
+                        Predicting the 3D structure from sequence alone was a 50-year open problem. AlphaFold2 (2021) largely solved it, but it still uses evolutionary data (multiple sequence alignments) as input, not sequence alone.
+
+                        The central question for pLMs: what do models trained only on sequences actually learn about structure?
+                    </textarea>
+                </section>
+
+                <!-- Crash course: contacts and coevolution -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Protein contacts and coevolution
+
+                        A contact: two residues that are close in 3D space (typically less than 8 Å), even if far apart in sequence. Contacts constrain the fold---knowing enough contacts approximately determines the 3D structure.
+
+                        Coevolution: in a family of related proteins, residues that are in contact tend to co-evolve. If one mutates, the other often compensates to preserve the interaction. This signal is detectable across a multiple sequence alignment (MSA) of homologs.
+
+                        Classical contact prediction methods (MRFs, inverse covariance models) extract this signal from MSAs. Zhang et al. ask: has ESM-2 internalized the same signal from unaligned sequences?
+                    </textarea>
+                </section>
+
+                
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## From Mechanistic Interpretability to Mechanistic Biology
+
+                        Adams et al. (2025) train sparse autoencoders (SAEs) on the residual stream of ESM-2, applying dictionary-learning methods developed for LLMs to a protein language model.
+
+                        SAE features correspond to interpretable biological concepts---secondary structure elements, conserved motifs, functional domains---and a large subset are specific to individual protein families.
+
+                        <p class="citation"><a href="https://arxiv.org/abs/2502.06636">Adams et al., 2025</a></p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## From Mechanistic Interpretability to Mechanistic Biology
+
+                        Key results:
+
+                        - SAE features correspond to secondary structure, motifs, domains, and biochemical patterns such as cysteine-cysteine bonds
+                        - Many features are protein family-specific: they activate on the central helix of beta-lactamases but not on similar helices in other families
+                        - Higher sparsity and larger dictionaries increase the number of family-specific features
+                        - Linear probes on SAE features uncover known sequence determinants: nuclear localization signals, signal peptide cleavage sites, hydrophobic core residues for thermostability
+
+                        <p class="citation"><a href="https://arxiv.org/abs/2502.06636">Adams et al., 2025</a></p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Protein Language Models Learn Evolutionary Statistics of Interacting Sequence Motifs
+
+                        Zhang et al. (2024) investigate how ESM-2 predicts protein contacts. They test three hypotheses: does the model learn folding physics, store per-family coevolutionary models, or store statistics of small interacting sequence motifs?
+
+                        Using an unsupervised "categorical Jacobian" and masking experiments, they provide evidence for the third hypothesis: ESM-2 predicts contacts by matching local sequence context to stored motif pairings.
+
+                        <p class="citation"><a href="https://doi.org/10.1073/pnas.2406285121">Zhang et al., 2024</a></p>
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Protein Language Models Learn Evolutionary Statistics of Interacting Sequence Motifs
+
+                        Key results:
+
+                        - pLMs predict isoforms as structured like the full-length protein, exposing physically implausible hydrophobic patches---evidence for evolutionary lookup, not physics
+                        - The categorical Jacobian of ESM-2 recovers coevolutionary couplings closely matching linear models fit to MSAs
+                        - Flanking unmasking recovers contacts far more effectively than random unmasking, often in a sharp step function once enough local context is revealed
+
+                        <p class="citation"><a href="https://doi.org/10.1073/pnas.2406285121">Zhang et al., 2024</a></p>
+                    </textarea>
+                </section>
+
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Deep Dives                                          -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * <span style="color: #767676;">Paper overviews</span>
+                        * Deep dives
+                        * <span style="color: #767676;">Discussion</span>
+                    </textarea>
+                </section>
+
+                <!-- SAE on pLMs setup -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Applying SAEs to a protein language model
+
+                        Adams et al. train TopK sparse autoencoders on the residual stream of ESM-2 (650M parameters), using the same architecture as Gao et al. (2024) for LLMs.
+
+                        TopK enforces exactly \\(k\\) active latents per input; the loss is pure reconstruction MSE with no L1 penalty. They train on 1 million sequences from UniRef50.
+
+                        They also build InterProt, an open-source visualizer that aligns top-activating sequences and highlights activation patterns on protein structures.
+
+                        <p class="citation">Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- Types of features -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## What SAE features look like
+
+                        Through InterProt, Adams et al. identify features corresponding to:
+
+                        - Secondary structure: alpha helices, beta strands, and their boundaries
+                        - Short conserved motifs and entire functional domains
+                        - Biochemical patterns: cysteine-cysteine bonds, hydrophobic residue clusters
+                        - Context-dependent variants: "the beginning of a helix," "a helix when buried," "asparagine in a disordered region"
+
+                        <p class="citation">Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- Family-specific features -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Family-specific latents
+
+                        Many SAE latents activate strongly on proteins from one family but weakly on others, even when those proteins share structurally similar features.
+
+                        Example: a latent activates on the central helix of beta-lactamases but not on the same helix geometry in other families. A latent detecting intrinsically disordered regions, by contrast, responds broadly across all families.
+
+                        ESM-2's representations partly mirror sequence-homology-based groupings---the model has built an internal notion of protein families.
+
+                        <p class="citation">Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- Classifying latents -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Classifying SAE latents
+
+                        Adams et al. classify latents along two axes:
+
+                        Activation pattern: point (single residues), periodic, motif (contiguous spans), or domain (nearly the whole sequence).
+
+                        Family specificity: a latent is family-specific if it achieves F1 > 0.7 for predicting membership in a particular InterPro family.
+
+                        Long-span features dominate early layers; shorter features dominate later layers. Family-specific features peak in early-to-mid layers and decline near the output.
+
+                        <p class="citation">Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- Hyperparameter effects -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## How SAE hyperparameters affect features
+
+                        Lower \\(k\\) (higher sparsity): more family-specific features, because they are the strongest signal and get prioritized when fewer latents are active.
+
+                        Larger expansion factor: more family-specific features, without shifting the distribution of activation pattern types.
+
+                        Both effects parallel findings for LLMs: larger dictionaries lead to feature splitting and finer-grained distinctions.
+
+                        <p class="citation">Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- Interpretable probing -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Interpretable linear probing
+
+                        Linear probes on SAE embeddings match or exceed raw ESM probe performance on four tasks: secondary structure, subcellular localization, thermostability, and mammalian cell expression.
+
+                        The key gain: probe coefficients on SAE features are interpretable. A large positive coefficient points to a specific, named biological concept rather than an opaque embedding dimension.
+
+                        <p class="citation">Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- What probes reveal -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## What probes reveal about each task
+
+                        Subcellular localization: top latents for nuclear localization activate on bipartite nuclear localization signals (K/R-rich motifs). Top latents for extracellular localization activate on signal peptide cleavage sites.
+
+                        Thermostability: top latents correspond to hydrophobic core residues (positive) and glutamine abundance (negative)---glutamine absence is a known correlate of thermostability.
+
+                        Mammalian cell expression: the top latent for failed CHO expression activates on ATP binding sites.
+
+                        <p class="citation">Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- Steering -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Steering ESM with SAE latents
+
+                        Adams et al. set a family-specific latent to a high multiple of its maximum observed value and continue the forward pass using reconstructed activations.
+
+                        Under steering, positions that change least correspond to evolutionarily conserved residues---the model retains family-level conservation awareness.
+
+                        Adams et al. suggest this as a path toward protein engineering. But the experiment only shows that steering preserves conservation patterns in the model's output---not that steered sequences fold correctly or function. ESM-2 is also an encoder, so actual sequence generation would require additional machinery not demonstrated here.
+
+                        <p class="citation">Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- Three hypotheses -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Three hypotheses for how pLMs predict structure
+
+                        Zhang et al. frame the question around three competing hypotheses:
+
+                        1. Physics: the model has learned the biophysics of protein folding from sequence alone
+                        2. Family lookup: the model stores a coevolution model per protein family and matches sequences to families at inference time
+                        3. Motif pairing: the model stores statistics of small pairwise interacting sequence segments, possibly shared across families
+
+                        Hypothesis 1 is ruled out early: ESM-2 accuracy correlates with the number of homologs in training data, not with physical properties.
+
+                        <p class="citation">Zhang et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Distinguishing hypotheses 2 and 3 -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Distinguishing hypotheses 2 and 3
+
+                        The isoform and Jacobian results are consistent with both 2 and 3---both involve evolutionary memory, not physics. They do not separate the two.
+
+                        The masking experiments are designed to do that. Under family lookup, contact recovery should improve gradually as more sequence context reveals family identity. Under motif pairing, local context alone should suffice.
+
+                        <p class="citation">Zhang et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Isoform failure -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## A clue from isoforms
+
+                        Protein isoforms are sequence fragments from alternative splicing---many are likely unfolded in isolation.
+
+                        Zhang et al. curate 18 such isoforms. AlphaFold2, OmegaFold, and ESMFold all predict confident, structured outputs matching the full-length protein, exposing hydrophobic patches that the missing helices would bury---a physically implausible result consistent with evolutionary lookup, not physics.
+
+                        One caveat: a model with partial physical reasoning might still predict isoforms as structured if the evolutionary signal is strong enough to override it. The result shows evolutionary memory dominates, but does not rule out physics playing some role.
+
+
+                        <p class="citation">Zhang et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Categorical Jacobian -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## The categorical Jacobian
+
+                        A separate contribution of Zhang et al. is a method for reading out what ESM-2 has learned, without any supervision or sequence alignment.
+
+                        For a sequence of length \\(L\\) with \\(A\\) amino acid types, they mutate each residue to all \\(A\\) amino acids and measure how the output logits change across all positions. This gives a tensor of shape \\(L \times A \times L \times A\\).
+
+                        For a linear MRF, this calculation returns exactly the pairwise coupling weights \\(W\\). This allows a direct comparison: do ESM-2's implicit couplings match what classical coevolution models learn from MSAs?
+
+                        <p class="citation">Zhang et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Jacobian results -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## ESM-2 recovers coevolutionary couplings
+
+                        ESM-2 (3B parameters), trained on unaligned sequences, achieves contact precision of 0.80 vs. 0.67 for a classical linear model on MSAs---nearly closing the gap to the supervised Contact Head (0.87).
+
+                        Coupling weights from the two approaches correlate significantly (Spearman R up to 0.61). ESM-2 has internalized what MSA-based models extract from alignments, without ever seeing one.
+
+                        <p class="citation">Zhang et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Masking experiments -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## How much context does ESM-2 need?
+
+                        To distinguish family lookup (hypothesis 2) from motif pairing (hypothesis 3), Zhang et al. take two 11-residue segments forming a contact, mask the rest, and gradually unmask using three strategies: flanking, random, or random avoiding the nearest 30 residues.
+
+                        Flanking unmasking recovers contacts roughly 3x more effectively than random. 50% of contact pairs are recovered with ~16 flanking residues unmasked on each side.
+
+                        Under family lookup, recovery should improve gradually as more sequence reveals family identity. Instead, local context alone suffices---ruling out hypothesis 2 in favor of motif pairing.
+
+                        <p class="citation">Zhang et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Step function behavior -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Step-function contact recovery
+
+                        Contact recovery is often abrupt: adding a single flanking residue causes recovery to jump from near zero to near complete.
+
+                        Across all segment pairs that eventually reach high recovery, 64--82% show a jump of more than 0.5 upon adding a single residue.
+
+                        This is consistent with motif matching: once enough of the motif is revealed, the model recognizes it and the contact is immediately predicted.
+
+                        <p class="citation">Zhang et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- What pLMs learned summary -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## What pLMs have (and have not) learned
+
+                        ESM-2 stores statistics of coevolving residue pairs conditioned on local sequence context:
+
+                        \\[ P(\text{contact}[a, b] \mid \text{seq}[a \pm s], \; \text{seq}[b \pm s]) \\]
+
+                        This is what classical MRFs do with MSAs, but stored in model parameters from unaligned sequences.
+
+                        The model does not need the full fold to predict a contact---but it also fails on out-of-distribution proteins like isoforms that break the context patterns it has memorized.
+
+                        <p class="citation">Zhang et al., 2024</p>
+                    </textarea>
+                </section>
+
+                <!-- Connection between the two papers -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## How the two papers connect
+
+                        Zhang et al. is hypothesis-driven: they start with three competing accounts of what pLMs learn and design experiments to rule them out. The question comes first; the methods follow.
+
+                        Adams et al. is method-driven: they apply SAEs to ESM-2 and ask what structure emerges. The family-specific features and interpretable probes are discoveries, not tests of a pre-stated hypothesis.
+
+    
+
+                        <p class="citation">Zhang et al., 2024; Adams et al., 2025</p>
+                    </textarea>
+                </section>
+
+                <!-- Coherence critique -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Coherence
+
+                        Zhang et al. is fairly coherent---the three hypotheses frame the whole paper and the experiments follow from them. The Jacobian is the odd piece out: it doesn't bear on hypothesis 2 vs. 3, but fits the broader theme of "what has ESM-2 learned."
+
+                        Adams et al. is less coherent. It covers feature taxonomy, family specificity, interpretable probing, hyperparameter effects, and steering---related but not building toward a single conclusion. It reads more like a catalog than an argument.
+
+                        The title promises "mechanistic biology," but the steering experiment---the closest thing to an actionable biological insight---is the least validated result in the paper.
+                    </textarea>
+                </section>
+
+                <!-- Methods summary -->
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Methods
+                        - TopK SAE training (Adams et al.): train on ESM-2 residual streams; vary layer, sparsity, and expansion factor
+                        - Interpretable probing (Adams et al.): linear models on SAE embeddings; inspect top-coefficient latents in InterProt
+
+                        - Categorical Jacobian (Zhang et al.): mutate each residue to all 20 amino acids; measure output logit changes; compare to MSA-based linear models
+                        - Segment masking (Zhang et al.): isolate two 11-residue segments forming a contact; measure recovery as flanking vs. random context is revealed
+                    </textarea>
+                </section>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- SECTION: Discussion                                          -->
+            <!-- ============================================================ -->
+            <section>
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Today's agenda
+
+                        * <span style="color: #767676;">Paper overviews</span>
+                        * <span style="color: #767676;">Deep dives</span>
+                        * Discussion
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Discussion 1: SAEs as scientific tools
+
+                        Adams et al. propose using SAE probing to generate hypotheses about unknown biological mechanisms. They identify latents that are predictive but hard to interpret, which could correspond to undiscovered biology.
+
+                        What would it take to validate such a hypothesis? What are the risks of treating SAE features as biological ground truth?
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Discussion 2: Transfer of interpretability methods
+
+                        SAEs were developed for LLMs trained on natural language. Adams et al. apply them to protein sequences with minor modifications.
+
+                        What aspects transfer cleanly? What assumptions from the LLM setting might not hold for protein sequences? What other scientific domains could benefit from this kind of mechanistic analysis?
+                    </textarea>
+                </section>
+
+                <section data-markdown>
+                    <textarea data-template>
+                        ## Discussion 2: Tentative answers
+
+                        - What transfers: the superposition hypothesis seems to hold---pLM activations are also sparse and linear; TopK architecture requires no changes
+                        - What may not hold: in LLMs, features often align with human-interpretable concepts because the data is language; for proteins, labeling features requires domain expertise, and many may be biologically real but not immediately named
+                        - Other domains: DNA language models (genomics), molecular property models (chemistry), materials science embeddings
+                    </textarea>
+                </section>
+
+            </section>
+
+            <!-- Questions -->
+            <section data-markdown>
+                <textarea data-template>
+                    # Questions?
+                </textarea>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/monokai.min.css">
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            transition: 'slide',
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            plugins: [ RevealMarkdown, RevealHighlight ]
+        });
+
+        Reveal.on('slidechanged', function() {
+            if (window.MathJax) MathJax.typesetPromise();
+        });
+    </script>
+</body>
+</html>
